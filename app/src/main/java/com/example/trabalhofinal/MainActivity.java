@@ -1,11 +1,13 @@
 package com.example.trabalhofinal;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.graphics.drawable.AnimatedStateListDrawableCompat;
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,6 +19,7 @@ import android.os.StrictMode;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -31,6 +34,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String INPUT_ID = "_id";
     private static final String DB_NAME = "like_register";
     private static final String TABLE_NAME = "like_user";
     private static final String INPUT_URL = "url";
@@ -46,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         database = openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
-        database.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " (" + INPUT_URL + " STRING PRIMARY KEY);");
+        database.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " ( " + INPUT_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " + INPUT_URL + " STRING );");
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -62,6 +66,19 @@ public class MainActivity extends AppCompatActivity {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_app, menu);
         return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.list:
+                Intent intent = new Intent(this, ListActivity.class);
+                startActivity(intent);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+
     }
 
     public void skip(View view) {
