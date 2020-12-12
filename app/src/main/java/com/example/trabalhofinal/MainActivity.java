@@ -4,6 +4,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.graphics.drawable.AnimatedStateListDrawableCompat;
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.AnimatedVectorDrawable;
@@ -12,7 +16,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
-import android.util.LogPrinter;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -27,13 +30,22 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String DB_NAME = "like_register";
+    private static final String TABLE_NAME = "like_user";
+    private static final String INPUT_URL = "url";
+    private SQLiteDatabase database;
+    private String currentUrl;
     private ImageView imageView, like;
     AnimatedVectorDrawableCompat avd;
     AnimatedVectorDrawable avd2;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        database = openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
+        database.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " (" + INPUT_URL + " STRING PRIMARY KEY);");
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -41,7 +53,10 @@ public class MainActivity extends AppCompatActivity {
         imageView = findViewById(R.id.image);
         like = findViewById(R.id.like);
 
+        renderImage();
+    }
 
+    public void skip(View view) {
         renderImage();
     }
 
@@ -58,12 +73,10 @@ public class MainActivity extends AppCompatActivity {
                 avd2.start();
             }
         }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                renderImage();
-            }
-        }).start();
+        ContentValues values = new ContentValues();
+        values.put(INPUT_URL, currentUrl);
+        database.insert(TABLE_NAME, null, values);
+        renderImage();
     }
 
     public void renderImage() {
@@ -73,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonObject = new JSONObject(jsonReturn);
 
             String imageUrl = jsonObject.getString("message");
-
+            currentUrl = imageUrl;
             URL url = new URL(imageUrl);
             Bitmap bmp = BitmapFactory.decodeStream(url.openConnection().getInputStream());
             imageView.setImageBitmap(bmp);
