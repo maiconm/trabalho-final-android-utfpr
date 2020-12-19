@@ -5,9 +5,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.graphics.drawable.AnimatedStateListDrawableCompat;
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 
+import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
@@ -69,6 +71,20 @@ public class MainActivity extends AppCompatActivity {
         like = findViewById(R.id.like);
 
         renderImage();
+        determineIfItIsFirstTimeOpened();
+    }
+
+    private void determineIfItIsFirstTimeOpened() {
+        Boolean isFirstRun = getSharedPreferences("PREFERENCES", MODE_PRIVATE).getBoolean("isFirstRun", true);
+        if (isFirstRun) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("Se gostar da imagem, clique em cima ou pressione o botão abaixo para pular!")
+                    .setTitle("Bem-vindo")
+                    .setPositiveButton("OK", null);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            getSharedPreferences("PREFERENCES", MODE_PRIVATE).edit().putBoolean("isFirstRun", false).commit();
+        }
     }
 
     @Override
