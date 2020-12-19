@@ -84,9 +84,13 @@ public class MainActivity extends AppCompatActivity {
             case R.id.list:
                 ArrayList<String> likesList = new ArrayList<String>();
                 likesList = loadLikesListFromDatabase();
-                Intent intent = new Intent(this, ListActivity.class);
-                intent.putStringArrayListExtra("likesList", likesList);
-                startActivity(intent);
+                Intent listIntent = new Intent(this, ListActivity.class);
+                listIntent.putStringArrayListExtra("likesList", likesList);
+                startActivity(listIntent);
+                return true;
+            case R.id.about:
+                Intent aboutIntent = new Intent(this, AboutActivity.class);
+                startActivity(aboutIntent);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
