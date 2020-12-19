@@ -8,13 +8,17 @@ import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.StrictMode;
 import android.util.Log;
 import android.view.Menu;
@@ -22,16 +26,21 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private static final String INPUT_ID = "_id";
@@ -41,8 +50,9 @@ public class MainActivity extends AppCompatActivity {
     private SQLiteDatabase database;
     private String currentUrl;
     private ImageView imageView, like;
-    AnimatedVectorDrawableCompat avd;
-    AnimatedVectorDrawable avd2;
+    private AnimatedVectorDrawableCompat avd;
+    private AnimatedVectorDrawable avd2;
+    private ProgressBar progress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
-
+        progress = findViewById(R.id.progress);
         imageView = findViewById(R.id.image);
         like = findViewById(R.id.like);
 
@@ -72,13 +82,28 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.list:
+                ArrayList<String> likesList = new ArrayList<String>();
+                likesList = loadLikesListFromDatabase();
                 Intent intent = new Intent(this, ListActivity.class);
+                intent.putStringArrayListExtra("likesList", likesList);
                 startActivity(intent);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
 
+    }
+
+    private ArrayList<String> loadLikesListFromDatabase() {
+        Cursor cursor = database.query(TABLE_NAME, new String[]{INPUT_URL}, null, null, null, null, null);
+        cursor.moveToFirst();
+        ArrayList<String> likesList = new ArrayList<String>();
+
+        while (cursor.moveToNext()) {
+            likesList.add(cursor.getString(0));
+        }
+
+        return likesList;
     }
 
     public void skip(View view) {
@@ -98,24 +123,27 @@ public class MainActivity extends AppCompatActivity {
                 avd2.start();
             }
         }
-        ContentValues values = new ContentValues();
-        values.put(INPUT_URL, currentUrl);
-        database.insert(TABLE_NAME, null, values);
-        renderImage();
+
+        final Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                ContentValues values = new ContentValues();
+                values.put(INPUT_URL, currentUrl);
+                database.insert(TABLE_NAME, null, values);
+                renderImage();
+            }
+        }, 900);
+
     }
 
     public void renderImage() {
         try {
             String jsonReturn = makeRequest();
-
             JSONObject jsonObject = new JSONObject(jsonReturn);
-
             String imageUrl = jsonObject.getString("message");
             currentUrl = imageUrl;
-            URL url = new URL(imageUrl);
-            Bitmap bmp = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-            imageView.setImageBitmap(bmp);
-
+            new DownloadImageTask().execute(imageUrl);
         } catch (final Exception ex) {
             ex.printStackTrace();
             Log.e("Error Image", "renderImage()");
@@ -156,5 +184,92 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return jsonReturn;
+    }
+
+    private class DownloadImageTask extends AsyncTask<String, Integer, Bitmap> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            imageView.setVisibility(View.GONE);
+            progress.setVisibility(View.VISIBLE);
+            progress.setProgress(0);
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values);
+            progress.setProgress(values[0]);
+        }
+
+        @Override
+        protected Bitmap doInBackground(String... strings) {
+            Bitmap bitmap = null;
+            InputStream inputStream = null;
+            OutputStream outputStream = null;
+            HttpURLConnection connection = null;
+            InputStream fileInputStream = null;
+            try {
+                URL url = new URL(strings[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                int fileSize = connection.getContentLength();
+
+                inputStream = connection.getInputStream();
+                String filePath = getFilesDir() + "/tmp.png";
+                outputStream = new FileOutputStream(filePath);
+
+                byte[] data = new byte[4096];
+                long total = 0;
+                int count;
+                while ((count = inputStream.read(data)) != -1) {
+                    total += count;
+                    publishProgress((int) (total * 100 / fileSize));
+                    outputStream.write(data, 0, count);
+                }
+
+                fileInputStream = new FileInputStream(filePath);
+                bitmap = BitmapFactory.decodeStream(fileInputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (outputStream != null) {
+                    try {
+                        outputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (inputStream != null) {
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (fileInputStream != null) {
+                    try {
+                        fileInputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+            return bitmap;
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            super.onPostExecute(bitmap);
+            progress.setVisibility(View.GONE);
+            if (bitmap != null) {
+                imageView.setVisibility(View.VISIBLE);
+                imageView.setImageBitmap(bitmap);
+            }
+        }
     }
 }
