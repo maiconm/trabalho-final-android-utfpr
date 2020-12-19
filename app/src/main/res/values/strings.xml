@@ -1,6 +1,10 @@
 <resources>
-    <string name="app_name">Trabalho FInal</string>
+    <string name="app_name">Trabalho Final</string>
     <string name="like_description">like description</string>
     <string name="list">lista de likes</string>
     <string name="about">sobre</string>
+    <string name="author_text">Feito por Maicon Andraski</string>
+    <string name="project_repo_text">Repositório do app no github</string>
+    <string name="instagram_like_animation_text">Animação de like Instagram</string>
+    <string name="dog_api_text">Dog API</string>
 </resources>
