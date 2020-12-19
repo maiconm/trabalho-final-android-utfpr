@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 database.insert(TABLE_NAME, null, values);
                 renderImage();
             }
-        }, 900);
+        }, 500);
 
     }
 
